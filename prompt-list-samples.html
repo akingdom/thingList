@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Prompt Lists Showcase</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      line-height: 1.6;
+      max-width: 800px;
+      margin: 2rem auto;
+      padding: 0 1rem;
+      color: #333;
+    }
+    header, section {
+      margin-bottom: 2.5rem;
+    }
+    h1, h2, h3 {
+      color: #222;
+    }
+    h2 {
+      border-bottom: 2px solid #ddd;
+      padding-bottom: 0.3em;
+    }
+    pre {
+      background: #f8f8f8;
+      padding: 1em;
+      overflow-x: auto;
+      border: 1px solid #eee;
+    }
+    ul, ol {
+      margin-left: 1.2em;
+    }
+    section#docs ul, section#docs ol {
+      margin-bottom: 1em;
+    }
+    fieldset {
+      border: 1px solid #ccc;
+      padding: 0.5em 1em;
+      margin: 1em 0;
+    }
+    label {
+      font-weight: bold;
+      margin-right: .5em;
+    }
+    input[type="number"] {
+      width: 4ch;
+      padding: 0.2em;
+    }
+    span.dpath {
+        color: #999;
+        font-family: monospace;
+        font-weight: normal;
+    }
+  </style>
+
+  <!-- Load the generated data bundle -->
+  <script src="build/js/categoriesWithThings.js"></script>
+</head>
+<body>
+
+  <header>
+    <h1>Prompt Lists Showcase</h1>
+    <section id="docs">
+      <h2>Documentation</h2>
+
+      <h3>Data Source</h3>
+      <p>
+        All lists are authored as YAML files in the
+        <a href="https://github.com/ai-prompts/prompt-lists">prompt-lists</a>
+        repository. Every subfolder under <code>lists/</code> is a “group”,
+        and each <code>*.yml</code> file inside is one named list.
+      </p>
+
+      <h3>Build Process</h3>
+      <ol>
+        <li>Run <code>python3 src/build_lists.py</code> (or add <code>--no-local</code> to fetch from GitHub on every run).</li>
+        <li>The script clones or updates <code>.cache/prompt-lists</code> and parses every YAML file.</li>
+        <li>It emits two UMD-wrapped bundles into <code>build/js/</code>:
+          <ul>
+            <li><code>categoriesWithThings.js</code> – full object of groups, lists, titles, and items</li>
+            <li><code>thingIndex.js</code> – index for reverse lookups and helper</li>
+          </ul>
+        </li>
+        <li>Place this HTML file next to the <code>build/js/</code> folder (or adjust the <code>&lt;script&gt;</code> path).</li>
+      </ol>
+
+      <h3>Usage</h3>
+      <ol>
+        <li>Open this page in your browser (or serve it via any HTTP server).</li>
+        <li>The JavaScript below reads <code>categoriesWithThings.thingList</code> and
+            dynamically renders:
+          <ul>
+            <li>A section per group (folder name).</li>
+            <li>Each list’s human-friendly title.</li>
+            <li><span id="sample-count-display">Three</span> random items sampled from that list.</li>
+          </ul>
+        </li>
+        <li>To customize sampling or style, edit the script or add your own CSS.</li>
+      </ol>
+
+      <!-- NEW: control how many items to sample -->
+      <fieldset>
+        <label for="sample-count">Items per sample:</label>
+        <input
+          type="number"
+          id="sample-count"
+          min="1"
+          max="20"
+          step="1"
+          value="3"
+        />
+      </fieldset>
+    </section>
+  </header>
+
+  <hr />
+
+  <main id="content">
+    <!-- Sections will be injected here -->
+  </main>
+
+  <script>
+    (function () {
+      const data = categoriesWithThings.thingList;
+      const container = document.getElementById('content');
+      const input = document.getElementById('sample-count');
+      const sampleDisplay = document.getElementById('sample-count-display');
+
+      // core render function
+      function render() {
+        const count = parseInt(input.value, 10) || 1;
+        // update docs text
+        sampleDisplay.textContent = count;
+
+        // clear existing
+        container.innerHTML = '';
+
+        // for each group
+        Object.entries(data).forEach(([groupName, lists]) => {
+          const section = document.createElement('section');
+
+          // Group heading
+          const h2 = document.createElement('h2');
+          h2.textContent = `## ${groupName}`;
+          section.appendChild(h2);
+
+          // each list in the group
+          Object.entries(lists).forEach(([listKey,listInfo]) => {
+            const h3 = document.createElement('h3');
+            h3.textContent = `### ${listInfo.title}`;
+            const span = document.createElement('span');
+            span.textContent = ` (thingList.${groupName}.${listKey})`;
+            span.className = 'dpath';
+            h3.appendChild(span);
+            section.appendChild(h3);
+
+            // pick `count` random items
+            const itemsCopy = [...listInfo.list];
+            const sample = [];
+            while (sample.length < count && itemsCopy.length) {
+              const i = Math.floor(Math.random() * itemsCopy.length);
+              sample.push(itemsCopy.splice(i, 1)[0]);
+            }
+
+            // render bullets
+            const ul = document.createElement('ul');
+            sample.forEach(item => {
+              const li = document.createElement('li');
+              li.textContent = item;
+              ul.appendChild(li);
+            });
+            section.appendChild(ul);
+          });
+
+          container.appendChild(section);
+        });
+      }
+
+      // initial draw + update on input change
+      input.addEventListener('input', render);
+      render();
+    })();
+  </script>
+</body>
+</html>
